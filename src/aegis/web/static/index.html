@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent Runtime - Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+        .trace-line { stroke-dasharray: 5, 5; }
+        .span-node { transition: all 0.2s ease; }
+        .span-node:hover { transform: scale(1.05); }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen" x-data="dashboard()">
+    <!-- Navigation -->
+    <nav class="bg-gray-800 border-b border-gray-700">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <span class="text-2xl font-bold text-indigo-400">
+                            <i class="fas fa-robot mr-2"></i>Agent Runtime
+                        </span>
+                    </div>
+                    <div class="hidden md:block ml-10">
+                        <div class="flex items-baseline space-x-4">
+                            <a href="#" @click.prevent="currentView = 'dashboard'" 
+                               :class="currentView === 'dashboard' ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700'"
+                               class="px-3 py-2 rounded-md text-sm font-medium">
+                                <i class="fas fa-chart-line mr-1"></i> Dashboard
+                            </a>
+                            <a href="#" @click.prevent="currentView = 'sessions'"
+                               :class="currentView === 'sessions' ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700'"
+                               class="px-3 py-2 rounded-md text-sm font-medium">
+                                <i class="fas fa-comments mr-1"></i> Sessions
+                            </a>
+                            <a href="#" @click.prevent="currentView = 'traces'"
+                               :class="currentView === 'traces' ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700'"
+                               class="px-3 py-2 rounded-md text-sm font-medium">
+                                <i class="fas fa-project-diagram mr-1"></i> Traces
+                            </a>
+                            <a href="#" @click.prevent="currentView = 'commitments'"
+                               :class="currentView === 'commitments' ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700'"
+                               class="px-3 py-2 rounded-md text-sm font-medium">
+                                <i class="fas fa-handshake mr-1"></i> Commitments
+                            </a>
+                            <a href="#" @click.prevent="currentView = 'tools'"
+                               :class="currentView === 'tools' ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700'"
+                               class="px-3 py-2 rounded-md text-sm font-medium">
+                                <i class="fas fa-wrench mr-1"></i> Tools
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center">
+                    <span class="text-sm text-gray-400 mr-4">
+                        <i class="fas fa-circle text-green-400 mr-1"></i> Connected
+                    </span>
+                    <button class="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-md text-sm font-medium">
+                        <i class="fas fa-plus mr-1"></i> New Session
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Dashboard View -->
+        <div x-show="currentView === 'dashboard'" x-cloak>
+            <h1 class="text-2xl font-bold mb-6">Dashboard</h1>
+            
+            <!-- Stats Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+                    <div class="flex items-center">
+                        <div class="p-3 bg-indigo-600 rounded-lg">
+                            <i class="fas fa-comments text-xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-gray-400 text-sm">Active Sessions</p>
+                            <p class="text-2xl font-bold" x-text="stats.activeSessions">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+                    <div class="flex items-center">
+                        <div class="p-3 bg-green-600 rounded-lg">
+                            <i class="fas fa-check-circle text-xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-gray-400 text-sm">Commitments Fulfilled</p>
+                            <p class="text-2xl font-bold" x-text="stats.commitmentsFulfilled">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+                    <div class="flex items-center">
+                        <div class="p-3 bg-yellow-600 rounded-lg">
+                            <i class="fas fa-wrench text-xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-gray-400 text-sm">Tool Invocations</p>
+                            <p class="text-2xl font-bold" x-text="stats.toolInvocations">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+                    <div class="flex items-center">
+                        <div class="p-3 bg-purple-600 rounded-lg">
+                            <i class="fas fa-save text-xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-gray-400 text-sm">Checkpoints</p>
+                            <p class="text-2xl font-bold" x-text="stats.checkpoints">0</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="bg-gray-800 rounded-lg border border-gray-700 p-6">
+                <h2 class="text-lg font-semibold mb-4">Recent Activity</h2>
+                <div class="space-y-4">
+                    <template x-for="activity in recentActivity" :key="activity.id">
+                        <div class="flex items-center p-3 bg-gray-700 rounded-lg">
+                            <div class="p-2 rounded-lg" :class="activity.iconBg">
+                                <i :class="activity.icon"></i>
+                            </div>
+                            <div class="ml-4 flex-1">
+                                <p class="font-medium" x-text="activity.title"></p>
+                                <p class="text-sm text-gray-400" x-text="activity.description"></p>
+                            </div>
+                            <span class="text-sm text-gray-500" x-text="activity.time"></span>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sessions View -->
+        <div x-show="currentView === 'sessions'" x-cloak>
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-2xl font-bold">Sessions</h1>
+                <button class="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-md text-sm font-medium">
+                    <i class="fas fa-plus mr-1"></i> New Session
+                </button>
+            </div>
+            
+            <div class="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
+                <table class="min-w-full divide-y divide-gray-700">
+                    <thead class="bg-gray-700">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Session ID</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Agent</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Messages</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Created</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-700">
+                        <template x-for="session in sessions" :key="session.id">
+                            <tr class="hover:bg-gray-700">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="font-mono text-sm text-indigo-400" x-text="session.id"></span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap" x-text="session.agent"></td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 py-1 text-xs rounded-full"
+                                          :class="session.status === 'active' ? 'bg-green-900 text-green-300' : 'bg-gray-600 text-gray-300'"
+                                          x-text="session.status"></span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap" x-text="session.messages"></td>
+                                <td class="px-6 py-4 whitespace-nowrap text-gray-400" x-text="session.created"></td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <button class="text-indigo-400 hover:text-indigo-300 mr-3">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button class="text-yellow-400 hover:text-yellow-300 mr-3">
+                                        <i class="fas fa-history"></i>
+                                    </button>
+                                    <button class="text-red-400 hover:text-red-300">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Traces View -->
+        <div x-show="currentView === 'traces'" x-cloak>
+            <h1 class="text-2xl font-bold mb-6">Trace Viewer</h1>
+            
+            <div class="grid grid-cols-3 gap-6">
+                <!-- Trace List -->
+                <div class="bg-gray-800 rounded-lg border border-gray-700 p-4">
+                    <h2 class="text-lg font-semibold mb-4">Recent Traces</h2>
+                    <div class="space-y-2">
+                        <template x-for="trace in traces" :key="trace.id">
+                            <div class="p-3 rounded-lg cursor-pointer transition-colors"
+                                 :class="selectedTrace?.id === trace.id ? 'bg-indigo-900 border border-indigo-500' : 'bg-gray-700 hover:bg-gray-600'"
+                                 @click="selectTrace(trace)">
+                                <div class="flex justify-between items-center">
+                                    <span class="font-mono text-sm" x-text="trace.id"></span>
+                                    <span class="text-xs text-gray-400" x-text="trace.duration"></span>
+                                </div>
+                                <div class="text-sm text-gray-400 mt-1">
+                                    <span x-text="trace.spans + ' spans'"></span>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Trace Detail -->
+                <div class="col-span-2 bg-gray-800 rounded-lg border border-gray-700 p-4">
+                    <template x-if="selectedTrace">
+                        <div>
+                            <h2 class="text-lg font-semibold mb-4">
+                                Trace: <span class="font-mono text-indigo-400" x-text="selectedTrace.id"></span>
+                            </h2>
+                            
+                            <!-- Span Tree -->
+                            <div class="space-y-2">
+                                <template x-for="span in selectedTrace.spanTree" :key="span.id">
+                                    <div class="span-node">
+                                        <div class="flex items-center p-3 bg-gray-700 rounded-lg"
+                                             :style="'margin-left: ' + (span.depth * 24) + 'px'">
+                                            <div class="w-3 h-3 rounded-full mr-3"
+                                                 :class="span.status === 'ok' ? 'bg-green-500' : 'bg-red-500'"></div>
+                                            <div class="flex-1">
+                                                <span class="font-medium" x-text="span.name"></span>
+                                                <span class="text-sm text-gray-400 ml-2" x-text="span.duration"></span>
+                                            </div>
+                                            <div class="text-xs text-gray-500" x-text="span.time"></div>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                    <template x-if="!selectedTrace">
+                        <div class="text-center text-gray-500 py-12">
+                            <i class="fas fa-project-diagram text-4xl mb-4"></i>
+                            <p>Select a trace to view details</p>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        <!-- Commitments View -->
+        <div x-show="currentView === 'commitments'" x-cloak>
+            <h1 class="text-2xl font-bold mb-6">Commitment Tracking</h1>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <div class="bg-gray-800 rounded-lg border border-gray-700 p-4">
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-400">Active</span>
+                        <span class="text-2xl font-bold text-yellow-400" x-text="commitmentStats.active">0</span>
+                    </div>
+                </div>
+                <div class="bg-gray-800 rounded-lg border border-gray-700 p-4">
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-400">Fulfilled</span>
+                        <span class="text-2xl font-bold text-green-400" x-text="commitmentStats.fulfilled">0</span>
+                    </div>
+                </div>
+                <div class="bg-gray-800 rounded-lg border border-gray-700 p-4">
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-400">Violated</span>
+                        <span class="text-2xl font-bold text-red-400" x-text="commitmentStats.violated">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
+                <table class="min-w-full divide-y divide-gray-700">
+                    <thead class="bg-gray-700">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">ID</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Debtor → Creditor</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Antecedent</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Consequent</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-700">
+                        <template x-for="commitment in commitments" :key="commitment.id">
+                            <tr class="hover:bg-gray-700">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="font-mono text-sm text-indigo-400" x-text="commitment.id"></span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span x-text="commitment.debtor"></span>
+                                    <i class="fas fa-arrow-right mx-2 text-gray-500"></i>
+                                    <span x-text="commitment.creditor"></span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400" x-text="commitment.antecedent"></td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400" x-text="commitment.consequent"></td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 py-1 text-xs rounded-full"
+                                          :class="{
+                                              'bg-yellow-900 text-yellow-300': commitment.status === 'active',
+                                              'bg-green-900 text-green-300': commitment.status === 'fulfilled',
+                                              'bg-red-900 text-red-300': commitment.status === 'violated',
+                                              'bg-gray-600 text-gray-300': commitment.status === 'pending'
+                                          }"
+                                          x-text="commitment.status"></span>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Tools View -->
+        <div x-show="currentView === 'tools'" x-cloak>
+            <h1 class="text-2xl font-bold mb-6">Available Tools</h1>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <template x-for="tool in tools" :key="tool.name">
+                    <div class="bg-gray-800 rounded-lg border border-gray-700 p-6">
+                        <div class="flex items-center mb-4">
+                            <div class="p-3 bg-indigo-600 rounded-lg">
+                                <i class="fas fa-wrench"></i>
+                            </div>
+                            <div class="ml-4">
+                                <h3 class="font-semibold" x-text="tool.name"></h3>
+                                <span class="text-xs text-gray-400" x-text="tool.category"></span>
+                            </div>
+                            <span class="ml-auto px-2 py-1 text-xs rounded-full"
+                                  :class="tool.enabled ? 'bg-green-900 text-green-300' : 'bg-gray-600 text-gray-300'"
+                                  x-text="tool.enabled ? 'Enabled' : 'Disabled'"></span>
+                        </div>
+                        <p class="text-sm text-gray-400 mb-4" x-text="tool.description"></p>
+                        <div class="text-xs text-gray-500">
+                            <span x-text="tool.parameters.length + ' parameters'"></span>
+                            <template x-if="tool.requiresAuth">
+                                <span class="ml-2"><i class="fas fa-lock"></i> Auth required</span>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        function dashboard() {
+            return {
+                currentView: 'dashboard',
+                selectedTrace: null,
+                
+                stats: {
+                    activeSessions: 3,
+                    commitmentsFulfilled: 42,
+                    toolInvocations: 156,
+                    checkpoints: 28
+                },
+                
+                commitmentStats: {
+                    active: 5,
+                    fulfilled: 42,
+                    violated: 2
+                },
+                
+                recentActivity: [
+                    { id: 1, icon: 'fas fa-comment', iconBg: 'bg-indigo-600', title: 'New message in session sess-001', description: 'User asked about weather', time: '2 min ago' },
+                    { id: 2, icon: 'fas fa-check', iconBg: 'bg-green-600', title: 'Commitment fulfilled', description: 'C(agent, user, request, response)', time: '5 min ago' },
+                    { id: 3, icon: 'fas fa-wrench', iconBg: 'bg-yellow-600', title: 'Tool invoked: read_file', description: 'Read /tmp/data.json', time: '8 min ago' },
+                    { id: 4, icon: 'fas fa-save', iconBg: 'bg-purple-600', title: 'Checkpoint created', description: 'Session sess-002, version 5', time: '12 min ago' },
+                ],
+                
+                sessions: [
+                    { id: 'sess-001', agent: 'Code Assistant', status: 'active', messages: 15, created: '10:30 AM' },
+                    { id: 'sess-002', agent: 'Research Agent', status: 'active', messages: 42, created: '9:15 AM' },
+                    { id: 'sess-003', agent: 'Code Assistant', status: 'completed', messages: 8, created: 'Yesterday' },
+                ],
+                
+                traces: [
+                    { id: 'trace-001', duration: '1.2s', spans: 5 },
+                    { id: 'trace-002', duration: '0.8s', spans: 3 },
+                    { id: 'trace-003', duration: '2.5s', spans: 8 },
+                ],
+                
+                commitments: [
+                    { id: 'C001', debtor: 'agent', creditor: 'user', antecedent: 'request_received', consequent: 'provide_response', status: 'active' },
+                    { id: 'C002', debtor: 'agent', creditor: 'system', antecedent: 'tool_invoked', consequent: 'report_result', status: 'fulfilled' },
+                    { id: 'C003', debtor: 'agent', creditor: 'user', antecedent: 'error_occurred', consequent: 'explain_error', status: 'fulfilled' },
+                ],
+                
+                tools: [
+                    { name: 'read_file', description: 'Read the contents of a file', category: 'filesystem', enabled: true, requiresAuth: false, parameters: ['path'] },
+                    { name: 'write_file', description: 'Write content to a file', category: 'filesystem', enabled: true, requiresAuth: false, parameters: ['path', 'content'] },
+                    { name: 'execute_command', description: 'Execute a shell command', category: 'system', enabled: true, requiresAuth: true, parameters: ['command'] },
+                    { name: 'search_web', description: 'Search the web for information', category: 'web', enabled: false, requiresAuth: true, parameters: ['query'] },
+                ],
+                
+                selectTrace(trace) {
+                    this.selectedTrace = {
+                        ...trace,
+                        spanTree: [
+                            { id: 's1', name: 'agent.run', duration: '1.2s', status: 'ok', depth: 0, time: '10:30:15' },
+                            { id: 's2', name: 'llm.complete', duration: '800ms', status: 'ok', depth: 1, time: '10:30:15' },
+                            { id: 's3', name: 'tool.execute', duration: '300ms', status: 'ok', depth: 1, time: '10:30:16' },
+                            { id: 's4', name: 'tool.read_file', duration: '50ms', status: 'ok', depth: 2, time: '10:30:16' },
+                        ]
+                    };
+                }
+            }
+        }
+    </script>
+</body>
+</html>
