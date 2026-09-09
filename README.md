@@ -290,6 +290,34 @@ pytest --cov=aegis --cov-report=html
 pytest tests/unit/test_state_machine.py -v
 ```
 
+### What the tests cover
+
+The 303 figure is real, but it is a count, not a measure of coverage. Line coverage is **41%**, and
+the count is unevenly distributed — several subsystems this README lists in the project tree have
+**no test file at all**:
+
+| Subsystem | Coverage |
+|---|---|
+| `recovery/` | 0% — no test file |
+| `multiagent/` | 0% — no test file |
+| `tools/builtin/` | 0% |
+| MCP adapter | 0% |
+| `core/replay.py` | 26% |
+
+Two paths are unimplemented stubs rather than working code, and both say so in their own source:
+`RetryStrategy.execute()` sleeps and returns a hard-coded `{"success": True}` under the comment
+`# In a real implementation, this would re-execute the action`
+(`src/aegis/recovery/strategies.py:249`), and `POST /sessions/{id}/messages` returns the literal
+string `"This is a placeholder response."` (`src/aegis/api/routes.py:169`). The examples that
+exercise these — `violation_recovery_demo.py`, `multiagent_demo.py` — demonstrate the interface,
+not a verified implementation.
+
+**Corrected 2026-09-09.** An earlier version of this README listed `hypothesis` in the technology
+stack. No property-based tests exist; `hypothesis` is a declared dev dependency that is never
+imported. A companion claim elsewhere — a per-module test breakdown reading 42/28/48/32/52/26 —
+was also withdrawn: those numbers sum to 228, not 303, and credited `recovery/` with 26 tests it
+does not have.
+
 ## API Server
 
 ```bash
@@ -330,7 +358,7 @@ export API_PORT=8000
 | API Framework | FastAPI |
 | CLI Framework | Click |
 | Web UI | React + TypeScript |
-| Testing | pytest + hypothesis |
+| Testing | pytest |
 
 ## Design Principles
 
